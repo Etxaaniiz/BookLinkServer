@@ -26,7 +26,6 @@ def get_favorites():
             for fav in favorites
         ]
 
-        print(f"📌 Enviando favoritos al frontend: {response_data}")  # ✅ Verificar los datos antes de enviarlos
         return jsonify(response_data), 200
 
     except Exception as e:
@@ -46,7 +45,7 @@ def add_favorite():
         book_id = data.get("book_id")
         book_title = data.get("book_title")
         book_author = data.get("book_author", "Autor desconocido")
-        book_cover = data.get("book_cover", "/placeholder.svg")  # ✅ Si no hay imagen, usar un placeholder
+        book_cover = data.get("book_cover", "/placeholder.svg")
 
         print(f"📌 Valores a guardar en la base de datos: book_id={book_id}, book_title={book_title}, book_author={book_author}, book_cover={book_cover}")
 
@@ -75,23 +74,29 @@ def add_favorite():
         print(f"🚨 Error en el backend: {str(e)}")
         return jsonify({"error": "No se pudo agregar el favorito", "details": str(e)}), 500
 
-
-
-
-
 @favorites_bp.route("/<int:id>", methods=["DELETE"])
 @jwt_required()
 def remove_favorite(id):
     try:
         user_id = get_jwt_identity()  # Obtener el ID del usuario autenticado
+        print(f"📌 Usuario autenticado en DELETE: {user_id}")
+        print(f"📌 Intentando eliminar favorito con ID recibido en la URL: {id}")
+
+        if not id:
+            print("🚨 ERROR: No se recibió un ID en la URL")
+            return jsonify({"error": "No se recibió un ID válido"}), 400
+
         favorite = Favorite.query.filter_by(id=id, user_id=user_id).first()
 
         if not favorite:
+            print(f"🚨 Favorito con ID {id} no encontrado para el usuario {user_id}")
             return jsonify({"error": "Favorito no encontrado"}), 404
 
         db.session.delete(favorite)
         db.session.commit()
 
+        print(f"✅ Favorito con ID {id} eliminado correctamente.")
         return jsonify({"message": f"Favorito con ID {id} eliminado"}), 200
     except Exception as e:
+        print(f"🚨 Error eliminando favorito: {str(e)}")
         return jsonify({"error": "No se pudo eliminar el favorito", "details": str(e)}), 500
