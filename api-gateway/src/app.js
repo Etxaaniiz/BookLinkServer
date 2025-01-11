@@ -1,34 +1,56 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const cors = require('cors');
+const express = require("express");
+const bodyParser = require("body-parser");
+const cors = require("cors");
+const axios = require("axios");
+const { expressjwt: jwt } = require("express-jwt");
+require("dotenv").config();
+
 const app = express();
-
-// Middlewares
-app.use(cors({
-    origin: 'http://localhost:3000', // URL del frontend
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
 app.use(bodyParser.json());
-app.use(express.json()); // Analizar JSON en el cuerpo de la solicitud
+app.use(cors({
+    origin: "http://localhost:3000", // Permitir solicitudes desde el frontend
+}));
 
-// Importar rutas
-const booksRoutes = require('./routes/books'); // Rutas para libros
-const usersRoutes = require('./routes/users'); // Rutas de autenticación (login, registro)
-const favoritesRoutes = require('./routes/favorites'); // Rutas de favoritos
-const detailsRoutes = require('./routes/details'); // Rutas para detalles de libros
+// Configurar JWT Middleware
+const JWT_SECRET = process.env.JWT_SECRET || "tu_clave_secreta_segura";
+app.use(
+    jwt({ secret: JWT_SECRET, algorithms: ["HS256"] }).unless({
+        path: ["/auth/login", "/auth/register"], // Permitir acceso sin autenticación
+    })
+);
 
-// Registrar rutas con prefijos consistentes
-app.use('/api/books', booksRoutes); // Prefijo para libros
-app.use('/api/users', usersRoutes); // Prefijo para autenticación
-app.use('/api/favorites', favoritesRoutes); // Prefijo para favoritos
-app.use('/api/details', detailsRoutes); // Prefijo para detalles de libros
+// URLs de los microservicios
+const SERVICES = {
+    auth: "http://localhost:5000/auth",
+    favorites: "http://localhost:5000/favorites",
+    details: "http://localhost:5000/api/details",
+    books: "http://localhost:4001/search"
+};
 
-// Manejo de errores
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Internal Server Error' });
+// Función para redirigir peticiones a los microservicios
+const proxyRequest = async (req, res, targetUrl) => {
+    try {
+        const response = await axios({
+            method: req.method,
+            url: `${targetUrl}${req.url}`,
+            data: req.body,
+            headers: req.headers
+        });
+        res.status(response.status).json(response.data);
+    } catch (error) {
+        console.error(`Error en API Gateway: ${error.message}`);
+        res.status(error.response?.status || 500).json(error.response?.data || { error: "Error en API Gateway" });
+    }
+};
+
+// **Rutas en el API Gateway**
+app.use("/auth", (req, res) => proxyRequest(req, res, SERVICES.auth));
+app.use("/favorites", (req, res) => proxyRequest(req, res, SERVICES.favorites));
+app.use("/details", (req, res) => proxyRequest(req, res, SERVICES.details));
+app.use("/books", (req, res) => proxyRequest(req, res, SERVICES.books));
+
+// Servidor API Gateway
+const PORT = 4000;
+app.listen(PORT, () => {
+    console.log(`✅ API Gateway corriendo en http://localhost:${PORT}`);
 });
-
-// Exportar la instancia de Express
-module.exports = app;

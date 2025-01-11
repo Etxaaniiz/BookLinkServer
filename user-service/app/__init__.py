@@ -3,16 +3,18 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
+from flask_migrate import Migrate  # ✅ Importar Migrate
 
 import logging
 
 # Configuración de logging
-logging.basicConfig(level=logging.DEBUG)  # Nivel de logging detallado
-logger = logging.getLogger("flask.app")  # Logger principal para Flask
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger("flask.app")
 
 db = SQLAlchemy()
 bcrypt = Bcrypt()
 jwt = JWTManager()
+migrate = Migrate()  # ✅ Inicializar la variable migrate
 
 def create_app():
     app = Flask(__name__)
@@ -22,11 +24,12 @@ def create_app():
     db.init_app(app)
     bcrypt.init_app(app)
     jwt.init_app(app)
-    CORS(app)  # Habilitar CORS para todas las rutas
+    CORS(app)
+    migrate.init_app(app, db)  # ✅ Inicializar Flask-Migrate con la app y la base de datos
 
     # Importar modelos para que SQLAlchemy los registre
     from app.models.user import User
-    from app.models.favorite import Favorite
+    from app.models.favorite import Favorite  # ✅ Asegurar que el modelo está importado
 
     # Registrar blueprints
     from app.routes.auth import auth_bp
