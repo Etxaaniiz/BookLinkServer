@@ -22,7 +22,6 @@ COPY app/models/ ./app/models/
 COPY app/routes/ ./app/routes/
 
 # Copiar migraciones y configuraciones locales (si son necesarias)
-COPY migrations/ ./migrations/
 COPY instance/ ./instance/
 
 # Exponer el puerto en el que corre Flask

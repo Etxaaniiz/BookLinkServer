@@ -5,7 +5,7 @@ FROM node:18
 WORKDIR /app
 
 # Copiar solo los archivos esenciales primero
-COPY package.json package-lock.json ./
+COPY package.json ./
 
 # Instalar dependencias
 RUN npm install
