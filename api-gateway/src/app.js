@@ -3,6 +3,9 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const axios = require("axios");
 const { expressjwt: jwt } = require("express-jwt");
+const swaggerUi = require("swagger-ui-express");
+const YAML = require("yamljs");
+const path = require("path"); 
 require("dotenv").config();
 
 const app = express();
@@ -13,6 +16,12 @@ app.use(cors({
     allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
+// Cargar Swagger desde `src/swagger.yaml`
+const swaggerDocument = YAML.load(path.resolve(__dirname, "swagger.yaml"));
+
+// Registrar la documentación en `/api-docs`
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
 const JWT_SECRET = process.env.JWT_SECRET || "tu_clave_secreta_segura";
 
 // 1️⃣ Definir rutas públicas ANTES del middleware JWT**
@@ -20,29 +29,29 @@ const SERVICES = {
     auth: "http://localhost:5000/auth",
     favorites: "http://localhost:5000/favorites",
     details: "http://localhost:5000/api/details",
-    books: "http://localhost:4001/search"
+    search: "http://localhost:4000/search"
 };
 
 // **Función para redirigir peticiones a los microservicios**
 const proxyRequest = async (req, res, targetUrl) => {
-  try {
-      const headers = {
-          "Content-Type": "application/json",
-          Authorization: req.headers.authorization || "", // ✅ Mantener JWT si existe
-      };
+  if (!targetUrl) {
+      console.error("❌ ERROR: `targetUrl` está indefinido en proxyRequest.");
+      return res.status(500).json({ error: "Error en API Gateway: URL no definida" });
+  }
 
-      console.log(`🔁 Reenviando solicitud ${req.method} a ${targetUrl} con headers:`, headers);
+  try {
+      console.log(`🔁 Redirigiendo solicitud ${req.method} a ${targetUrl} con params:`, req.query);
 
       const response = await axios({
           method: req.method,
-          url: targetUrl,
-          data: req.body,
-          headers: headers,
+          url: targetUrl,  // ✅ Se asegura que `targetUrl` es válido
+          params: req.query,  // ✅ Enviar parámetros correctamente
+          headers: req.headers
       });
 
       res.status(response.status).json(response.data);
   } catch (error) {
-      console.error(`❌ Error en API Gateway (${req.method} ${targetUrl}):`, error.message);
+      console.error(`❌ Error en API Gateway (${req.method} ${targetUrl}):`, error.response?.data || error.message);
       res.status(error.response?.status || 500).json(error.response?.data || { error: "Error en API Gateway" });
   }
 };
@@ -65,6 +74,7 @@ app.use(jwt({
         { url: "/auth/login", methods: ["POST"] },
         { url: "/auth/register", methods: ["POST"] },
         { url: /^\/details\/.*/, methods: ["GET"] },
+        { url: "/search", methods: ["GET"] }, 
     ],
 }));
 
@@ -94,7 +104,7 @@ app.use("/details/:bookId", (req, res) => {
   proxyRequest(req, res, `${SERVICES.details}/${bookId}`);
 });
 
-app.use("/books", (req, res) => proxyRequest(req, res, SERVICES.books));
+app.use("/search", (req, res) => proxyRequest(req, res, SERVICES.search));
 
 // Exportar la instancia de app sin ejecutar .listen()
 module.exports = app;

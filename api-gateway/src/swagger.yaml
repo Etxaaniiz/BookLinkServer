@@ -1,0 +1,210 @@
+openapi: 3.0.0
+info:
+  title: BookLink API
+  description: "API Gateway para la gestión de usuarios, favoritos y búsqueda de libros."
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:4001
+    description: "API Gateway (Punto de entrada principal)"
+
+  - url: http://localhost:5000
+    description: "Microservicio de Autenticación y Favoritos (Flask)"
+
+  - url: http://localhost:4000
+    description: "Microservicio de Búsqueda de Libros (Node.js)"
+
+  - url: http://localhost:3000
+    description: "Frontend React"
+
+paths:
+  /auth/login:
+    post:
+      summary: "Iniciar sesión"
+      description: "Permite a un usuario autenticarse y obtener un token JWT."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: "test@gmail.com"
+                password:
+                  type: string
+                  example: "123"
+      responses:
+        "200":
+          description: "Token JWT generado"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIs..."
+        "401":
+          description: "Credenciales incorrectas"
+
+  /auth/register:
+    post:
+      summary: "Registrar usuario"
+      description: "Registra un nuevo usuario en el sistema."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  example: "nuevoUsuario"
+                email:
+                  type: string
+                  example: "nuevo@email.com"
+                password:
+                  type: string
+                  example: "segura123"
+      responses:
+        "201":
+          description: "Usuario registrado exitosamente"
+        "400":
+          description: "El email o usuario ya está registrado"
+
+  /favorites:
+    get:
+      summary: "Obtener favoritos"
+      description: "Devuelve la lista de favoritos del usuario autenticado."
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: "Lista de favoritos del usuario"
+        "401":
+          description: "No autorizado"
+
+    post:
+      summary: "Agregar favorito"
+      description: "Agrega un libro a la lista de favoritos."
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                book_id:
+                  type: string
+                  example: "xyz123"
+                book_title:
+                  type: string
+                  example: "El nombre del viento"
+                book_author:
+                  type: string
+                  example: "Patrick Rothfuss"
+      responses:
+        "201":
+          description: "Libro agregado a favoritos"
+        "401":
+          description: "No autorizado"
+
+  /favorites/{id}:
+    delete:
+      summary: "Eliminar un favorito"
+      description: "Elimina un libro de la lista de favoritos del usuario autenticado."
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "ID del favorito a eliminar"
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Favorito eliminado"
+        "401":
+          description: "No autorizado"
+        "404":
+          description: "Favorito no encontrado"
+
+  /details/{bookId}:
+    get:
+      summary: "Obtener detalles de un libro"
+      description: "Devuelve la información detallada de un libro basado en su ID."
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          description: "ID del libro en Google Books API"
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Detalles del libro"
+        "404":
+          description: "Libro no encontrado"
+
+  /search:
+    get:
+      summary: "Buscar libros"
+      description: "Realiza una búsqueda de libros en la API de Google Books a través del API Gateway."
+      servers:
+        - url: http://localhost:4001
+          description: "📌 API Gateway - Proxy hacia el microservicio de búsqueda de libros"
+      parameters:
+        - name: query
+          in: query
+          required: true
+          description: "Texto de búsqueda (puede ser título, autor, etc.)"
+          schema:
+            type: string
+            example: "Ciencia ficción"
+        - name: maxResults
+          in: query
+          required: false
+          description: "Número máximo de resultados a devolver"
+          schema:
+            type: integer
+            example: 10
+      responses:
+        "200":
+          description: "Resultados de la búsqueda obtenidos desde el API Gateway"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          example: "123abc"
+                        title:
+                          type: string
+                          example: "Fundación"
+                        authors:
+                          type: array
+                          items:
+                            type: string
+                          example: ["Isaac Asimov"]
+                        cover:
+                          type: string
+                          example: "https://cover-image.jpg"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

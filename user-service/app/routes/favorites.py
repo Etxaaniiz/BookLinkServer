@@ -56,7 +56,7 @@ def add_favorite():
         if existing_favorite:
             return jsonify({"error": "El libro ya está en favoritos"}), 409
 
-        # ✅ Guardamos los valores en la base de datos
+        # Guardamos los valores en la base de datos
         new_favorite = Favorite(
             user_id=user_id,
             book_id=book_id,
