@@ -26,10 +26,10 @@ const JWT_SECRET = process.env.JWT_SECRET || "tu_clave_secreta_segura";
 
 // 1️⃣ Definir rutas públicas ANTES del middleware JWT**
 const SERVICES = {
-    auth: "http://localhost:5000/auth",
-    favorites: "http://localhost:5000/favorites",
-    details: "http://localhost:5000/api/details",
-    search: "http://localhost:4000/search"
+  auth: "http://user-service:5000/auth",
+  favorites: "http://user-service:5000/favorites",
+  details: "http://user-service:5000/api/details",
+  search: "http://book-search:4001/search"
 };
 
 // **Función para redirigir peticiones a los microservicios**
@@ -40,12 +40,13 @@ const proxyRequest = async (req, res, targetUrl) => {
   }
 
   try {
-      console.log(`🔁 Redirigiendo solicitud ${req.method} a ${targetUrl} con params:`, req.query);
+      console.log(`🔁 Redirigiendo solicitud ${req.method} a ${targetUrl} con body:`, req.body);
 
       const response = await axios({
           method: req.method,
-          url: targetUrl,  // ✅ Se asegura que `targetUrl` es válido
-          params: req.query,  // ✅ Enviar parámetros correctamente
+          url: targetUrl,
+          params: req.query, 
+          ...(req.method !== "GET" && { data: req.body }),
           headers: req.headers
       });
 
